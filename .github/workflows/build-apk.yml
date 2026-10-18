@@ -1,0 +1,53 @@
+name: Build AirGesture APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unzip project (only if a project zip was uploaded)
+        run: |
+          for z in AirGesture*.zip; do
+            if [ -f "$z" ]; then
+              echo "Unzipping $z"
+              unzip -o "$z"
+            fi
+          done
+          ls -la
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Download MediaPipe hand landmarker model
+        run: |
+          mkdir -p app/src/main/assets
+          curl -fL --retry 3 -o app/src/main/assets/hand_landmarker.task \
+            https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+          ls -l app/src/main/assets/hand_landmarker.task
+          test "$(stat -c%s app/src/main/assets/hand_landmarker.task)" -gt 1000000
+
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirGesture-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
