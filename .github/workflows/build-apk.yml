@@ -15,6 +15,7 @@ jobs:
 
       - name: Unzip project (only if a project zip was uploaded)
         run: |
+          # Zips are applied in name order, so AirGesture-Phase2.zip overwrites Phase1 files.
           for z in AirGesture*.zip; do
             if [ -f "$z" ]; then
               echo "Unzipping $z"
@@ -41,6 +42,10 @@ jobs:
             https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
           ls -l app/src/main/assets/hand_landmarker.task
           test "$(stat -c%s app/src/main/assets/hand_landmarker.task)" -gt 1000000
+
+      - name: Unit tests (gesture engine)
+        continue-on-error: true   # a failing test is reported but never blocks the APK
+        run: gradle testDebugUnitTest --stacktrace
 
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
